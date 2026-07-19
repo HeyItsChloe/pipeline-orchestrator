@@ -1,0 +1,40 @@
+# Reference template for the thin caller workflow a managed repo needs.
+# The scaffold_pipeline tool generates this automatically (with your actual
+# skills_repo_*/project_language/test_command/etc values and your pipeline's
+# own label/mention trigger mapping filled in) — this file is a static
+# example for reading or hand-writing one, not something copied verbatim.
+name: dev-pipeline
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  repository_dispatch:
+    types: [agent-trigger]
+
+jobs:
+  dispatch:
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    uses: <YOUR_OWNER>/<YOUR_ENGINE_REPO>/.github/workflows/dev-pipeline-reusable.yml@main
+    with:
+      skills_repo_owner: <YOUR_OWNER>
+      skills_repo_name: <YOUR_SKILLS_REPO>
+      skills_repo_branch: main
+      project_language: CHANGE_ME
+      test_command: CHANGE_ME
+      coverage_type: CHANGE_ME
+      desired_coverage: 85
+      reviewer: CHANGE_ME
+      action: >-
+        ${{
+          (github.event.label.name == 'approach-ready' && 'plan') ||
+          (github.event.label.name == 'approved' && 'implement') ||
+          (contains(github.event.comment.body, '@dev-agent plan') && 'plan') ||
+          (contains(github.event.comment.body, '@dev-agent implement') && 'implement') ||
+          github.event.client_payload.action
+        }}
+    secrets: inherit

@@ -1,0 +1,81 @@
+name: Generate & deploy docs site
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 1' # Mondays 9am UTC — only acts if DOCS_TRIGGER_MODE = weekly
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: 'Doc generation engine for this run'
+        type: choice
+        default: repo-default
+        options:
+          - repo-default
+          - deterministic
+          - llm
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docs-site
+  cancel-in-progress: true
+
+jobs:
+  generate-and-deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && vars.DOCS_TRIGGER_MODE == 'on-merge') ||
+      (github.event_name == 'schedule' && vars.DOCS_TRIGGER_MODE == 'weekly')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve engine for this run
+        id: engine
+        run: |
+          if [ "${{ github.event.inputs.engine }}" != "" ] && [ "${{ github.event.inputs.engine }}" != "repo-default" ]; then
+            echo "value=${{ github.event.inputs.engine }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${DOCS_ENGINE:-deterministic}" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          DOCS_ENGINE: ${{ vars.DOCS_ENGINE }}
+
+      - name: Generate site
+        run: npm run generate:site -- --engine=${{ steps.engine.outputs.value }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Commit generated docs back to main
+        run: |
+          git config user.name "docs-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/ scripts/.last-sha.json
+          git diff --cached --quiet && echo "No doc changes to commit" || git commit -m "docs: regenerate site [skip ci]"
+          git push
+
+      - run: npm run docs:build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

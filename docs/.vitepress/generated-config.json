@@ -1,0 +1,20 @@
+{
+  "title": "pipeline-orchestrator",
+  "description": "A generic, skill-driven GitHub App pipeline engine — self-hosted, any pipeline.",
+  "footer": "Regenerated automatically on merge to main — powered by GitHub Actions.",
+  "nav": [
+    { "text": "Introduction", "link": "/" },
+    { "text": "Codebase Overview", "link": "/codebase-overview" },
+    { "text": "Changelog", "link": "/changelog" }
+  ],
+  "sidebar": [
+    {
+      "text": "Reference",
+      "items": [
+        { "text": "Introduction", "link": "/" },
+        { "text": "Codebase Overview", "link": "/codebase-overview" },
+        { "text": "Changelog", "link": "/changelog" }
+      ]
+    }
+  ]
+}

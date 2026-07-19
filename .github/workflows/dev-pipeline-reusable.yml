@@ -1,0 +1,370 @@
+name: dev-pipeline-reusable
+
+# The dev-ticket-pipeline handler's actual CI logic lives here, once,
+# centrally — each managed repo keeps only a thin caller workflow (see
+# templates/dev-pipeline-caller.yml, or the auto-generated one from the
+# scaffold_pipeline tool) that passes its own registry values.
+#
+# Generic across deployments: skills_repo_* identify whichever control repo
+# holds skills for THIS deployment (your own agent-ops, or any self-hoster's
+# equivalent) — nothing here hardcodes a specific owner/repo.
+
+on:
+  workflow_call:
+    inputs:
+      skills_repo_owner:
+        required: true
+        type: string
+      skills_repo_name:
+        required: true
+        type: string
+      skills_repo_branch:
+        required: false
+        type: string
+        default: main
+      # Comma-separated (e.g. "typescript" or "typescript,node") — GitHub Actions
+      # workflow_call inputs have no list type. Matched against each shared
+      # skill's own applies_to tag by the "Match shared skills" step below.
+      project_language:
+        required: true
+        type: string
+      test_command:
+        required: true
+        type: string
+      coverage_type:
+        required: true
+        type: string
+      desired_coverage:
+        required: true
+        type: number
+      reviewer:
+        required: true
+        type: string
+      action:
+        required: true
+        type: string # "plan" | "implement"
+    secrets:
+      LITELLM_PROXY_URL:
+        required: true
+      LITELLM_VIRTUAL_KEY:
+        required: true
+      GH_APP_ID:
+        required: true
+      GH_APP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  plan:
+    if: inputs.action == 'plan'
+    runs-on: ubuntu-latest
+    # id-token: write is required by anthropics/claude-code-action@v1 (OIDC token
+    # request). Reusable workflow permissions are the *intersection* of what this
+    # job grants and what the caller job grants, so the caller (e.g. a managed
+    # app repo's dev-pipeline.yml) needs a matching permissions block too, or
+    # this alone won't be enough.
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      # Repo-local tier: a skill so specific to this one repo that it lives
+      # in the repo's own checkout instead of the skills control repo. No
+      # applies_to matching needed — living here already scopes it.
+      # Convention: any *.md anywhere under skills/ at this repo's root.
+      - name: List repo-local skills
+        id: repo-skills
+        run: |
+          MATCHES=()
+          if [ -d skills ]; then
+            while IFS= read -r -d '' f; do
+              MATCHES+=("$f")
+            done < <(find skills -name '*.md' -print0 2>/dev/null | sort -z)
+          fi
+          echo "list<<REPO_SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+          if [ ${#MATCHES[@]} -gt 0 ]; then
+            printf '%s\n' "${MATCHES[@]}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "REPO_SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      # Skills live once, centrally, in the skills control repo — never
+      # duplicated into caller repos. This workflow only checks out the
+      # caller repo by default, so skill paths in the prompt below would
+      # never exist without also checking out the skills repo here. Needs
+      # its own App token: the caller repo and the skills repo are often
+      # under different accounts, so the caller-scoped app-token above can't
+      # necessarily read the skills repo.
+      - uses: actions/create-github-app-token@v1
+        id: skills-token
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ inputs.skills_repo_owner }}
+          repositories: ${{ inputs.skills_repo_name }}
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.skills_repo_owner }}/${{ inputs.skills_repo_name }}
+          ref: ${{ inputs.skills_repo_branch }}
+          token: ${{ steps.skills-token.outputs.token }}
+          path: .skills-repo
+      # .skills-repo is checked out *inside* this job's main working tree (its
+      # own nested .git dir sitting under the caller repo's checkout), not
+      # beside it. Without this, a broad `git add -A`/`git add .` (a command
+      # Claude Code is entirely likely to run) would make git auto-stage it
+      # as a gitlink — the same mechanism `git submodule add` uses — with no
+      # matching .gitmodules entry, which is a real failure mode
+      # ("fatal: No url found for submodule path '.skills-repo' in
+      # .gitmodules") if this exclude step is skipped.
+      # .git/info/exclude is a local-only ignore list: it keeps .skills-repo
+      # out of git add/status for this checkout without touching the caller
+      # repo's own committed .gitignore.
+      - name: Exclude .skills-repo from git
+        run: echo ".skills-repo/" >> .git/info/exclude
+      # Every dev skill lives in <skills repo>/skills/shared/dev/, tagged in
+      # its own frontmatter with `applies_to: all`, `applies_to:
+      # [<language>, ...]`, or `applies_to: [repo:<owner>/<name>]`. This step
+      # is the only place that tag is ever read — it matches each skill's
+      # applies_to against this project's project_language (comma-separated
+      # input) and/or its own repo, and hands Claude Code the resulting file
+      # list. Nothing here or in the prompt ever names a specific skill —
+      # adding, narrowing, or repo-scoping a skill later never touches this
+      # workflow.
+      - name: Match shared skills
+        id: match-skills
+        env:
+          PROJECT_LANGUAGE: ${{ inputs.project_language }}
+          REPO_FULL_NAME: ${{ github.repository }}
+        run: |
+          IFS=',' read -ra LANGS <<< "$PROJECT_LANGUAGE"
+          MATCHES=()
+          for f in .skills-repo/skills/shared/dev/*/SKILL.md; do
+            [ -f "$f" ] || continue
+            TAG=$(awk '/^---$/{c++; next} c==1 && /^applies_to:/{print; exit}' "$f")
+            VALUE=$(echo "$TAG" | sed -E 's/^applies_to:[[:space:]]*//')
+            if [ "$VALUE" = "all" ]; then
+              MATCHES+=("$f")
+              continue
+            fi
+            LIST=$(echo "$VALUE" | tr -d '[]' | tr ',' '\n')
+            MATCHED=false
+            while IFS= read -r item; do
+              item=$(echo "$item" | xargs)
+              [ -z "$item" ] && continue
+              if [ "$item" = "repo:$REPO_FULL_NAME" ]; then MATCHED=true; fi
+              for lang in "${LANGS[@]}"; do
+                lang=$(echo "$lang" | xargs)
+                if [ "$item" = "$lang" ]; then MATCHED=true; fi
+              done
+            done <<< "$LIST"
+            if [ "$MATCHED" = true ]; then
+              MATCHES+=("$f")
+            fi
+          done
+          echo "list<<SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${MATCHES[@]}" >> "$GITHUB_OUTPUT"
+          echo "SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+      - uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.LITELLM_PROXY_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.LITELLM_VIRTUAL_KEY }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          # ${{ github.event.issue.number }} covers the `issues` and
+          # `issue_comment` triggers; ${{ github.event.client_payload.issue_number }}
+          # covers repository_dispatch (chat/curl-originated jobs). The action
+          # never auto-injects issue content into the model's context — the
+          # prompt has to name the number explicitly and have the agent fetch
+          # the content itself.
+          prompt: |
+            The issue to work on is #${{ github.event.issue.number || github.event.client_payload.issue_number }}
+            in this repository. Run `gh issue view ${{ github.event.issue.number || github.event.client_payload.issue_number }}
+            --json number,title,body,comments` to read its actual content before doing anything else.
+
+            Then read each of these skill files before doing anything else:
+            ${{ steps.match-skills.outputs.list }}
+            ${{ steps.repo-skills.outputs.list }}
+            Produce an approach doc.
+
+            Before creating sub-issues, list this parent's existing sub-issues
+            and skip any whose title already matches the plan — this run must
+            be safely re-runnable without creating duplicates.
+
+            Create each sub-issue with exactly one command:
+              gh issue create --parent <parent_number> --title '<title>' --body '<body>'
+            This creates and links the sub-issue atomically in a single call.
+            Do NOT create a plain issue and then separately call
+            `gh api .../sub_issues` (REST) or a GraphQL addSubIssue mutation to
+            link it afterward — that two-step path reliably 403s ("Resource
+            not accessible by integration") regardless of retries. If you
+            ever end up with an issue that was created without --parent,
+            close it and recreate it correctly with --parent rather than
+            trying to link the orphan retroactively.
+
+            Once all sub-issues are created, post one comment on the parent
+            issue tagging the reviewer. Do NOT use backticks anywhere in the
+            --body text — the permission system denies any Bash command
+            containing a backtick regardless of quoting, even inside a
+            quoted string:
+              gh issue comment ${{ github.event.issue.number || github.event.client_payload.issue_number }} --body "@${{ inputs.reviewer }} Planning complete - <N> sub-issues ready for review. Apply the approach-ready label to proceed."
+            Replace <N> with the actual number of sub-issues you created (or
+            found already existing, on a re-run).
+
+            Then label this issue "approach-ready".
+          claude_args: |
+            --max-turns 16
+            --model planning
+            --permission-mode dontAsk
+            --allowedTools "Read" "Bash(gh issue *)" "Bash(gh api *)" "Bash(gh sub-issue *)"
+          settings: |
+            {
+              "permissions": {
+                "defaultMode": "dontAsk",
+                "allow": ["Read", "Bash(gh issue *)", "Bash(gh api *)", "Bash(gh sub-issue *)"]
+              }
+            }
+
+  implement:
+    if: inputs.action == 'implement'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: List repo-local skills
+        id: repo-skills
+        run: |
+          MATCHES=()
+          if [ -d skills ]; then
+            while IFS= read -r -d '' f; do
+              MATCHES+=("$f")
+            done < <(find skills -name '*.md' -print0 2>/dev/null | sort -z)
+          fi
+          echo "list<<REPO_SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+          if [ ${#MATCHES[@]} -gt 0 ]; then
+            printf '%s\n' "${MATCHES[@]}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "REPO_SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      - uses: actions/create-github-app-token@v1
+        id: skills-token
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ inputs.skills_repo_owner }}
+          repositories: ${{ inputs.skills_repo_name }}
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.skills_repo_owner }}/${{ inputs.skills_repo_name }}
+          ref: ${{ inputs.skills_repo_branch }}
+          token: ${{ steps.skills-token.outputs.token }}
+          path: .skills-repo
+      - name: Exclude .skills-repo from git
+        run: echo ".skills-repo/" >> .git/info/exclude
+      - name: Match shared skills
+        id: match-skills
+        env:
+          PROJECT_LANGUAGE: ${{ inputs.project_language }}
+          REPO_FULL_NAME: ${{ github.repository }}
+        run: |
+          IFS=',' read -ra LANGS <<< "$PROJECT_LANGUAGE"
+          MATCHES=()
+          for f in .skills-repo/skills/shared/dev/*/SKILL.md; do
+            [ -f "$f" ] || continue
+            TAG=$(awk '/^---$/{c++; next} c==1 && /^applies_to:/{print; exit}' "$f")
+            VALUE=$(echo "$TAG" | sed -E 's/^applies_to:[[:space:]]*//')
+            if [ "$VALUE" = "all" ]; then
+              MATCHES+=("$f")
+              continue
+            fi
+            LIST=$(echo "$VALUE" | tr -d '[]' | tr ',' '\n')
+            MATCHED=false
+            while IFS= read -r item; do
+              item=$(echo "$item" | xargs)
+              [ -z "$item" ] && continue
+              if [ "$item" = "repo:$REPO_FULL_NAME" ]; then MATCHED=true; fi
+              for lang in "${LANGS[@]}"; do
+                lang=$(echo "$lang" | xargs)
+                if [ "$item" = "$lang" ]; then MATCHED=true; fi
+              done
+            done <<< "$LIST"
+            if [ "$MATCHED" = true ]; then
+              MATCHES+=("$f")
+            fi
+          done
+          echo "list<<SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${MATCHES[@]}" >> "$GITHUB_OUTPUT"
+          echo "SKILL_LIST_EOF" >> "$GITHUB_OUTPUT"
+      # The branch name has to be known *before* Claude Code runs, not
+      # discovered from it afterward — see the Qodo step's comment below.
+      - name: Compute branch name
+        id: branch
+        run: echo "name=claude/issue-${{ github.event.issue.number || github.event.client_payload.issue_number }}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+      - uses: anthropics/claude-code-action@v1
+        id: claude
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.LITELLM_PROXY_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.LITELLM_VIRTUAL_KEY }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        with:
+          prompt: |
+            The approved issue is #${{ github.event.issue.number || github.event.client_payload.issue_number }}
+            in this repository. Run `gh issue view ${{ github.event.issue.number || github.event.client_payload.issue_number }}
+            --json number,title,body,comments` and list its sub-issues to read the
+            approach doc and acceptance criteria before doing anything else.
+
+            Before making any changes, create and check out a new branch
+            named exactly `${{ steps.branch.outputs.name }}`
+            (e.g. `git checkout -b ${{ steps.branch.outputs.name }}`) and do
+            all your work on it. Do not rename it and do not check out any
+            other branch afterward — a later workflow step reads this exact
+            name from its own separately-computed value, not from you, so it
+            must match precisely.
+
+            Then read each of these skill files before doing anything else:
+            ${{ steps.match-skills.outputs.list }}
+            ${{ steps.repo-skills.outputs.list }}
+            Implement the approved approach for this issue and its sub-issues.
+            Write unit tests for the core logic as part of the implementation.
+            Commit and push your branch, then open a PR from it and request
+            review from ${{ inputs.reviewer }}.
+
+            If you need to create any additional sub-issue during
+            implementation, use exactly `gh issue create --parent <parent_number>
+            --title '<title>' --body '<body>'` in one call — never create a
+            plain issue and separately try to link it via `gh api .../sub_issues`
+            or a GraphQL addSubIssue mutation, which 403s regardless of retries.
+          claude_args: |
+            --max-turns 30
+            --model implementation
+            --permission-mode dontAsk
+            --allowedTools "Read" "Edit" "Write" "Bash"
+          settings: |
+            {
+              "permissions": {
+                "defaultMode": "dontAsk",
+                "allow": ["Read", "Edit", "Write", "Bash"]
+              }
+            }
+
+      - name: Qodo coverage gate
+        uses: qodo-ai/qodo-ci/.github/actions/qodo-cover@v0.1.12
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ steps.branch.outputs.name }}
+          project_language: ${{ inputs.project_language }}
+          project_root: .
+          code_coverage_report_path: ./coverage/cobertura-coverage.xml
+          coverage_type: ${{ inputs.coverage_type }}
+          test_command: ${{ inputs.test_command }}
+          desired_coverage: ${{ inputs.desired_coverage }}
+          max_iterations: 3

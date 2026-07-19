@@ -1,0 +1,30 @@
+name: Publish package
+
+# Publishes to the public npm registry on a version tag (v0.1.0, v0.2.0,
+# ...). Requires an NPM_TOKEN repo secret with publish rights — see
+# README.md's "Publishing" section. The source repo can be private while
+# this still publishes a public package; the two are independent settings.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
