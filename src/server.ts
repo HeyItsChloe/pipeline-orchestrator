@@ -15,6 +15,7 @@ import { handleChatCommand } from "./triggers/chat_command.js";
 import { recordPullRequestOpened } from "./jobs/open_pr.js";
 import { recordQualityGateResult } from "./jobs/quality_gate.js";
 import { mountMcpHttp } from "./integrations/mcp_server.js";
+import { createDevTicketPipelineHandler } from "./handlers/dev_ticket_pipeline.js";
 import type { PipelineHandler } from "./types.js";
 import type { GitHubAppConfig } from "./integrations/github.js";
 
@@ -121,4 +122,17 @@ export function createServer(config: EngineConfig, handlerList: PipelineHandler[
 // the generic engine and is each deployment's own concern to mount, e.g. by
 // taking the Express app createServer() returns and adding routes to it
 // before calling .listen().
-export { extensionAuth };
+export { extensionAuth, sharedSecretAuth, createDevTicketPipelineHandler };
+export { DevTicketParamsSchema } from "./handlers/dev_ticket_pipeline.js";
+export type { DevTicketPipelineDeps } from "./handlers/dev_ticket_pipeline.js";
+export type { GitHubAppConfig } from "./integrations/github.js";
+export type {
+  ExecutionStrategy,
+  JobPayload,
+  PipelineDefinition,
+  PipelineHandler,
+  PipelineHandlerContext,
+  PipelineResult,
+  PipelineTriggers,
+  TriggerSource,
+} from "./types.js";
