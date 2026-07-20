@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-20 — 2 commits (`6af2af2`)
+
+_engine: `deterministic`_
+
+- Remove Publishing section from README (Claude, 2026-07-20, `6af2af2`)
+- docs: regenerate site [skip ci] (docs-site-bot, 2026-07-20, `b771b5b`)
+
 ## 2026-07-20 — 6 commits (`2f60ea7`)
 
 _engine: `deterministic`_

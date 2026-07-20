@@ -1,6 +1,6 @@
 # Codebase Overview
 
-_Generated 2026-07-20T22:41:47.537Z · commit `2f60ea7`_
+_Generated 2026-07-20T22:49:27.061Z · commit `6af2af2`_
 
 ## File tree
 
@@ -14,7 +14,7 @@ _Generated 2026-07-20T22:41:47.537Z · commit `2f60ea7`_
 ├── .gitignore (31B)
 ├── Dockerfile (608B)
 ├── LICENSE (1.0KB)
-├── README.md (5.1KB)
+├── README.md (4.4KB)
 ├── docs/
 │   ├── .vitepress/
 │   │   ├── config.ts (1.4KB)
@@ -25,8 +25,8 @@ _Generated 2026-07-20T22:41:47.537Z · commit `2f60ea7`_
 │   │       ├── custom.css (12.3KB)
 │   │       ├── generated-tokens.css (546B)
 │   │       └── index.ts (154B)
-│   ├── changelog.md (184B)
-│   ├── codebase-overview.md (3.7KB)
+│   ├── changelog.md (796B)
+│   ├── codebase-overview.md (3.8KB)
 │   └── index.md (2.4KB)
 ├── package-lock.json (167.6KB)
 ├── package.json (1.6KB)
