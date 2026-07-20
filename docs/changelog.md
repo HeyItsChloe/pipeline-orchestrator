@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-20 — 2 commits (`ea1ece4`)
+
+_engine: `deterministic`_
+
+- Remove remaining resume/ticket reference from README intro (Claude, 2026-07-20, `ea1ece4`)
+- docs: regenerate site [skip ci] (docs-site-bot, 2026-07-20, `55dccc1`)
+
 ## 2026-07-20 — 2 commits (`bf3e8a2`)
 
 _engine: `deterministic`_
