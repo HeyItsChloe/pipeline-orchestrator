@@ -38,8 +38,8 @@ something.
 ## Quick start (as a library, with your own custom pipeline)
 
 ```ts
-import { createServer } from "pipeline-orchestrator";
-import { createDevTicketPipelineHandler } from "pipeline-orchestrator/dist/handlers/dev_ticket_pipeline.js";
+import { createServer } from "@heyitschloe/pipeline-orchestrator";
+import { createDevTicketPipelineHandler } from "@heyitschloe/pipeline-orchestrator/dist/handlers/dev_ticket_pipeline.js";
 import { myCustomHandler } from "./my-custom-handler.js";
 
 const app = createServer(

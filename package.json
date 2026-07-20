@@ -1,5 +1,5 @@
 {
-  "name": "pipeline-orchestrator",
+  "name": "@heyitschloe/pipeline-orchestrator",
   "version": "0.1.0",
   "description": "A generic, skill-driven GitHub App pipeline engine. Self-hosted — clone and run standalone, or import as a library and register your own pipeline handlers.",
   "type": "module",
