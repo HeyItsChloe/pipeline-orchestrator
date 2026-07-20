@@ -1,8 +1,8 @@
 # pipeline-orchestrator
 
-A generic, skill-driven GitHub App pipeline engine. It doesn't know what a
-"ticket" or a "resume" is — it knows how to receive a trigger (a GitHub
-label, an `@mention`, a chat/MCP command, or a curl request), look up a
+A generic, skill-driven GitHub App pipeline engine. It doesn't know what any
+specific pipeline does — it knows how to receive a trigger (a GitHub label,
+an `@mention`, a chat/MCP command, or a curl request), look up a
 **registered pipeline** (a skill + a trigger pattern + an execution
 strategy, all config, not code), and run it.
 

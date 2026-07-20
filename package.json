@@ -1,6 +1,6 @@
 {
   "name": "@heyitschloe/pipeline-orchestrator",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Self-hosted GitHub App pipeline engine — register any automation pipeline via config and write your own handlers, no shared hosted service. Ships with issue-to-PR automation (plan, approve, implement, quality gate) by default.",
   "type": "module",
   "main": "dist/server.js",
