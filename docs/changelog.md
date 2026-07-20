@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-20 — 2 commits (`bf3e8a2`)
+
+_engine: `deterministic`_
+
+- Strip personal-deployment narrative from README, align npm description (Claude, 2026-07-20, `bf3e8a2`)
+- docs: regenerate site [skip ci] (docs-site-bot, 2026-07-20, `1fd1359`)
+
 ## 2026-07-20 — 1 commit (`29c8c05`)
 
 _engine: `deterministic`_
