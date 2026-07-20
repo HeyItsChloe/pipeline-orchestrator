@@ -4,6 +4,13 @@ name: Publish package
 # ...). Requires an NPM_TOKEN repo secret with publish rights — see
 # README.md's "Publishing" section. The source repo can be private while
 # this still publishes a public package; the two are independent settings.
+#
+# No --provenance: npm's provenance attestation requires the source repo
+# be public (it signs a claim back to a public CI run for anyone to verify)
+# — this repo is currently private, so provenance was dropped rather than
+# forcing a repo-visibility decision here. Re-add --provenance to the
+# npm publish line below if the repo is ever made public and provenance is
+# wanted back.
 
 on:
   push:
@@ -25,6 +32,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
-      - run: npm publish --access public --provenance
+      - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
