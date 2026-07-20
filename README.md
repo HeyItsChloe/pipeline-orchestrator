@@ -13,12 +13,11 @@ GitHub App registration, your own secrets, your own registry.
 
 ## What ships by default
 
-One handler, `dev-ticket-pipeline`: ticket → plan → human approval →
+One handler, `dev-ticket-pipeline`: issue → plan → human approval →
 implement → PR → coverage/quality gate, dispatched against a target repo's
 own GitHub Actions run (see `.github/workflows/dev-pipeline-reusable.yml`).
 That's the only pipeline shape this repo bundles real logic for. Anything
-else — a job-search pipeline, a docs-regeneration pipeline, whatever you
-need — is a handler you write yourself and register at boot, using the same
+else is a handler you write yourself and register at boot, using the same
 `PipelineHandler` interface.
 
 ## Quick start (standalone, clone-and-run)
@@ -54,11 +53,6 @@ const app = createServer(
 );
 app.listen(3000);
 ```
-
-This is the pattern a real private deployment uses in production: one
-bootstrap file, importing the published package, registering the shipped
-`dev-ticket-pipeline` handler alongside its own custom in-process handler,
-serving both from a single process.
 
 ## Registry format
 
