@@ -21,7 +21,7 @@ else — a job-search pipeline, a docs-regeneration pipeline, whatever you
 need — is a handler you write yourself and register at boot, using the same
 `PipelineHandler` interface.
 
-## Quick start (standalone)
+## Quick start (standalone, clone-and-run)
 
 ```sh
 git clone https://github.com/HeyItsChloe/pipeline-orchestrator.git
@@ -37,6 +37,12 @@ something.
 
 ## Quick start (as a library, with your own custom pipeline)
 
+Published on npm as `@heyitschloe/pipeline-orchestrator`:
+
+```sh
+npm install @heyitschloe/pipeline-orchestrator
+```
+
 ```ts
 import { createServer } from "@heyitschloe/pipeline-orchestrator";
 import { createDevTicketPipelineHandler } from "@heyitschloe/pipeline-orchestrator/dist/handlers/dev_ticket_pipeline.js";
@@ -48,6 +54,11 @@ const app = createServer(
 );
 app.listen(3000);
 ```
+
+This is the pattern a real private deployment uses in production: one
+bootstrap file, importing the published package, registering the shipped
+`dev-ticket-pipeline` handler alongside its own custom in-process handler,
+serving both from a single process.
 
 ## Registry format
 
@@ -103,14 +114,18 @@ Register it in your own bootstrap file alongside (or instead of) the shipped
 5. For each `github-actions`-execution pipeline, add a thin caller workflow to that target repo (see `templates/dev-pipeline-caller.yml`, or use the `scaffold_pipeline` tool to generate it).
 6. Deploy this repo's `Dockerfile` wherever you like (Cloud Run, Fly, a VPS — anything that can run a container and reach the internet).
 
-## Publishing (if you want the `npm install` path to work)
+## Publishing
 
-`.github/workflows/publish.yml` publishes to the public npm registry on a
-`v*` tag, using an `NPM_TOKEN` repo secret. This works whether this repo
+Published to the public npm registry as `@heyitschloe/pipeline-orchestrator`.
+`.github/workflows/publish.yml` re-publishes on a `v*` tag or manual
+dispatch, using an `NPM_TOKEN` repo secret. This works whether this repo
 itself is public or private — publishing to npm and repo visibility are
-independent. If the repo is private, only what's listed in `package.json`'s
-`files` field ships in the published package; the git history, issues, and
-anything not in that list stay private.
+independent settings. This repo is currently private; only what's listed
+in `package.json`'s `files` field ships in the published package (`dist/`,
+`templates/`, `README.md`, `LICENSE`) — the git history, issues, and source
+under `src/` stay private. `npm publish --provenance` requires a public
+source repo, so provenance attestation is off for now; it's a one-flag
+re-add in `publish.yml` if the repo is ever made public.
 
 ## License
 

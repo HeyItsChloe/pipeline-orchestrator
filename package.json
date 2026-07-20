@@ -1,7 +1,7 @@
 {
   "name": "@heyitschloe/pipeline-orchestrator",
-  "version": "0.1.0",
-  "description": "A generic, skill-driven GitHub App pipeline engine. Self-hosted — clone and run standalone, or import as a library and register your own pipeline handlers.",
+  "version": "0.1.1",
+  "description": "Self-hosted GitHub App pipeline engine — register any automation pipeline via config and write your own handlers, no shared hosted service. Ships with ticket-to-PR automation (plan, approve, implement, quality gate) by default.",
   "type": "module",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
