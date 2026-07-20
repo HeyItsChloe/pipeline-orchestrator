@@ -114,19 +114,6 @@ Register it in your own bootstrap file alongside (or instead of) the shipped
 5. For each `github-actions`-execution pipeline, add a thin caller workflow to that target repo (see `templates/dev-pipeline-caller.yml`, or use the `scaffold_pipeline` tool to generate it).
 6. Deploy this repo's `Dockerfile` wherever you like (Cloud Run, Fly, a VPS — anything that can run a container and reach the internet).
 
-## Publishing
-
-Published to the public npm registry as `@heyitschloe/pipeline-orchestrator`.
-`.github/workflows/publish.yml` re-publishes on a `v*` tag or manual
-dispatch, using an `NPM_TOKEN` repo secret. This works whether this repo
-itself is public or private — publishing to npm and repo visibility are
-independent settings. This repo is currently private; only what's listed
-in `package.json`'s `files` field ships in the published package (`dist/`,
-`templates/`, `README.md`, `LICENSE`) — the git history, issues, and source
-under `src/` stay private. `npm publish --provenance` requires a public
-source repo, so provenance attestation is off for now; it's a one-flag
-re-add in `publish.yml` if the repo is ever made public.
-
 ## License
 
 MIT — see `LICENSE`.
