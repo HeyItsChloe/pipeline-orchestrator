@@ -1,8 +1,18 @@
 # Changelog
 
+## 2026-07-20 — 6 commits (`2f60ea7`)
+
+_engine: `deterministic`_
+
+- Update README for the published package, refine npm listing description (Claude, 2026-07-20, `2f60ea7`)
+- Drop --provenance from publish workflow (Claude, 2026-07-20, `6f5de9f`)
+- Publish as scoped package @heyitschloe/pipeline-orchestrator (Claude, 2026-07-20, `8c5e219`)
+- Regenerate package-lock.json to include vitepress (Claude, 2026-07-20, `023a8a4`)
+- Re-export handler/type surface, add prepare script for git-dependency installs (Claude, 2026-07-19, `ecd39af`)
+- docs: regenerate overview & changelog (Claude, 2026-07-19, `3a67489`)
+
 ## 2026-07-19 — 1 commit (`956b6c8`)
 
 _engine: `deterministic`_
 
 - Scaffold the generic pipeline engine and dev-ticket-pipeline handler (Claude, 2026-07-19, `956b6c8`)
-

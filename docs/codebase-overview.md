@@ -1,6 +1,6 @@
 # Codebase Overview
 
-_Generated 2026-07-19T22:21:55.833Z · engine: `deterministic` · commit `956b6c8`_
+_Generated 2026-07-20T22:41:47.537Z · commit `2f60ea7`_
 
 ## File tree
 
@@ -10,11 +10,11 @@ _Generated 2026-07-19T22:21:55.833Z · engine: `deterministic` · commit `956b6c
 │   └── workflows/
 │       ├── dev-pipeline-reusable.yml (16.5KB)
 │       ├── docs-site.yml (2.2KB)
-│       └── publish.yml (843B)
+│       └── publish.yml (1.2KB)
 ├── .gitignore (31B)
 ├── Dockerfile (608B)
 ├── LICENSE (1.0KB)
-├── README.md (4.4KB)
+├── README.md (5.1KB)
 ├── docs/
 │   ├── .vitepress/
 │   │   ├── config.ts (1.4KB)
@@ -25,12 +25,13 @@ _Generated 2026-07-19T22:21:55.833Z · engine: `deterministic` · commit `956b6c
 │   │       ├── custom.css (12.3KB)
 │   │       ├── generated-tokens.css (546B)
 │   │       └── index.ts (154B)
-│   ├── changelog.md (12B)
-│   ├── codebase-overview.md (2.0KB)
+│   ├── changelog.md (184B)
+│   ├── codebase-overview.md (3.7KB)
 │   └── index.md (2.4KB)
-├── package-lock.json (81.9KB)
-├── package.json (1.5KB)
+├── package-lock.json (167.6KB)
+├── package.json (1.6KB)
 ├── scripts/
+│   ├── .last-sha.json (56B)
 │   ├── generate-changelog.mjs (2.5KB)
 │   ├── generate-overview.mjs (2.3KB)
 │   ├── generate-site.mjs (17.4KB)
@@ -53,7 +54,7 @@ _Generated 2026-07-19T22:21:55.833Z · engine: `deterministic` · commit `956b6c
 │   ├── logging.ts (1.3KB)
 │   ├── registry/
 │   │   └── load.ts (2.7KB)
-│   ├── server.ts (5.1KB)
+│   ├── server.ts (5.6KB)
 │   ├── triggers/
 │   │   ├── chat_command.ts (6.0KB)
 │   │   ├── github_label.ts (1.4KB)
@@ -78,7 +79,7 @@ _Generated 2026-07-19T22:21:55.833Z · engine: `deterministic` · commit `956b6c
 - `src/jobs/open_pr.ts` → `../logging.js`
 - `src/jobs/quality_gate.ts` → `../logging.js`
 - `src/registry/load.ts` → `../types.js`
-- `src/server.ts` → `./auth.js`, `./logging.js`, `./registry/load.js`, `./triggers/github_label.js`, `./triggers/github_mention.js`, `./triggers/http_api.js`, `./triggers/chat_command.js`, `./jobs/open_pr.js`, `./jobs/quality_gate.js`, `./integrations/mcp_server.js`, `./types.js`, `./integrations/github.js`
+- `src/server.ts` → `./auth.js`, `./logging.js`, `./registry/load.js`, `./triggers/github_label.js`, `./triggers/github_mention.js`, `./triggers/http_api.js`, `./triggers/chat_command.js`, `./jobs/open_pr.js`, `./jobs/quality_gate.js`, `./integrations/mcp_server.js`, `./handlers/dev_ticket_pipeline.js`, `./types.js`, `./integrations/github.js`
 - `src/triggers/chat_command.ts` → `../integrations/github.js`, `../registry/load.js`, `../handlers/scaffold.js`, `../logging.js`, `../types.js`
 - `src/triggers/github_label.ts` → `../registry/load.js`, `../logging.js`, `../types.js`
 - `src/triggers/github_mention.ts` → `../auth.js`, `../registry/load.js`, `../logging.js`, `../types.js`
